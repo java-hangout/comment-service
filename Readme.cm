@@ -1,0 +1,336 @@
+Here's a more comprehensive example of an internal ticketing system using microservices architecture with Spring Boot and MongoDB. This example will include three main microservices:
+
+1. **User Service**: Manages user information.
+2. **Ticket Service**: Handles ticket creation, retrieval, and updates.
+3. **Comment Service**: Manages comments on tickets.
+
+### Project Structure
+
+```
+internal-ticketing-system
+│
+├── user-service
+│   ├── src
+│   │   ├── main
+│   │   │   ├── java
+│   │   │   │   └── com
+│   │   │   │       └── example
+│   │   │   │           └── userservice
+│   │   │   │               ├── User.java
+│   │   │   │               ├── UserRepository.java
+│   │   │   │               ├── UserController.java
+│   │   │   │               └── UserServiceApplication.java
+│   │   │   └── resources
+│   │   │       └── application.properties
+│   └── pom.xml
+│
+├── ticket-service
+│   ├── src
+│   │   ├── main
+│   │   │   ├── java
+│   │   │   │   └── com
+│   │   │   │       └── example
+│   │   │   │           └── ticketservice
+│   │   │   │               ├── Ticket.java
+│   │   │   │               ├── TicketRepository.java
+│   │   │   │               ├── TicketController.java
+│   │   │   │               └── TicketServiceApplication.java
+│   │   │   └── resources
+│   │   │       └── application.properties
+│   └── pom.xml
+│
+└── comment-service
+    ├── src
+    │   ├── main
+    │   │   ├── java
+    │   │   │   └── com
+    │   │   │       └── example
+    │   │   │           └── commentservice
+    │   │   │               ├── Comment.java
+    │   │   │               ├── CommentRepository.java
+    │   │   │               ├── CommentController.java
+    │   │   │               └── CommentServiceApplication.java
+    │   │   └── resources
+    │   │       └── application.properties
+    └── pom.xml
+```
+
+### User Service
+
+**1. User.java** (Model)
+```java
+package com.example.userservice;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+@Document(collection = "users")
+public class User {
+    @Id
+    private String id;
+    private String username;
+    private String password;
+
+    // Getters and Setters
+}
+```
+
+**2. UserRepository.java** (Repository)
+```java
+package com.example.userservice;
+
+import org.springframework.data.mongodb.repository.MongoRepository;
+
+public interface UserRepository extends MongoRepository<User, String> {
+    User findByUsername(String username);
+}
+```
+
+**3. UserController.java** (Controller)
+```java
+package com.example.userservice;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @PostMapping("/register")
+    public User registerUser(@RequestBody User user) {
+        return userRepository.save(user);
+    }
+
+    @GetMapping("/{username}")
+    public User getUser(@PathVariable String username) {
+        return userRepository.findByUsername(username);
+    }
+}
+```
+
+**4. UserServiceApplication.java** (Main Application)
+```java
+package com.example.userservice;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class UserServiceApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(UserServiceApplication.class, args);
+    }
+}
+```
+
+**5. application.properties** (Configuration)
+```properties
+spring.data.mongodb.uri=mongodb://localhost:27017/users
+server.port=8081
+```
+
+### Ticket Service
+
+**1. Ticket.java** (Model)
+```java
+package com.example.ticketservice;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+@Document(collection = "tickets")
+public class Ticket {
+    @Id
+    private String id;
+    private String title;
+    private String description;
+    private String userId; // Reference to the User
+    private String status; // e.g., OPEN, IN_PROGRESS, CLOSED
+
+    // Getters and Setters
+}
+```
+
+**2. TicketRepository.java** (Repository)
+```java
+package com.example.ticketservice;
+
+import org.springframework.data.mongodb.repository.MongoRepository;
+
+import java.util.List;
+
+public interface TicketRepository extends MongoRepository<Ticket, String> {
+    List<Ticket> findByUserId(String userId);
+}
+```
+
+**3. TicketController.java** (Controller)
+```java
+package com.example.ticketservice;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/tickets")
+public class TicketController {
+
+    @Autowired
+    private TicketRepository ticketRepository;
+
+    @PostMapping("/")
+    public Ticket createTicket(@RequestBody Ticket ticket) {
+        return ticketRepository.save(ticket);
+    }
+
+    @GetMapping("/user/{userId}")
+    public List<Ticket> getUserTickets(@PathVariable String userId) {
+        return ticketRepository.findByUserId(userId);
+    }
+
+    @GetMapping("/{id}")
+    public Ticket getTicket(@PathVariable String id) {
+        return ticketRepository.findById(id).orElse(null);
+    }
+
+    @PutMapping("/{id}")
+    public Ticket updateTicket(@PathVariable String id, @RequestBody Ticket ticket) {
+        ticket.setId(id);
+        return ticketRepository.save(ticket);
+    }
+}
+```
+
+**4. TicketServiceApplication.java** (Main Application)
+```java
+package com.example.ticketservice;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class TicketServiceApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(TicketServiceApplication.class, args);
+    }
+}
+```
+
+**5. application.properties** (Configuration)
+```properties
+spring.data.mongodb.uri=mongodb://localhost:27017/tickets
+server.port=8082
+```
+
+### Comment Service
+
+**1. Comment.java** (Model)
+```java
+package com.example.commentservice;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+@Document(collection = "comments")
+public class Comment {
+    @Id
+    private String id;
+    private String ticketId; // Reference to the Ticket
+    private String userId;   // Reference to the User
+    private String content;
+
+    // Getters and Setters
+}
+```
+
+**2. CommentRepository.java** (Repository)
+```java
+package com.example.commentservice;
+
+import org.springframework.data.mongodb.repository.MongoRepository;
+
+import java.util.List;
+
+public interface CommentRepository extends MongoRepository<Comment, String> {
+    List<Comment> findByTicketId(String ticketId);
+}
+```
+
+**3. CommentController.java** (Controller)
+```java
+package com.example.commentservice;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/comments")
+public class CommentController {
+
+    @Autowired
+    private CommentRepository commentRepository;
+
+    @PostMapping("/")
+    public Comment createComment(@RequestBody Comment comment) {
+        return commentRepository.save(comment);
+    }
+
+    @GetMapping("/ticket/{ticketId}")
+    public List<Comment> getCommentsByTicketId(@PathVariable String ticketId) {
+        return commentRepository.findByTicketId(ticketId);
+    }
+}
+```
+
+**4. CommentServiceApplication.java** (Main Application)
+```java
+package com.example.commentservice;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class CommentServiceApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(CommentServiceApplication.class, args);
+    }
+}
+```
+
+**5. application.properties** (Configuration)
+```properties
+spring.data.mongodb.uri=mongodb://localhost:27017/comments
+server.port=8083
+```
+
+### Running the Application
+
+1. **Start MongoDB** on your local machine or in a Docker container.
+2. **Run each service**:
+   - Navigate to each service's directory (e.g., `user-service`, `ticket-service`, `comment-service`) and run:
+     ```bash
+     mvn spring-boot:run
+     ```
+3. **Test the API** using tools like Postman:
+   - Register a user: `POST http://localhost:8081/api/users/register`
+   - Create a ticket: `POST http://localhost:8082/api/tickets/`
+   - Get user tickets: `GET http://localhost:8082/api/tickets/user/{userId}`
+   - Create a comment: `POST http://localhost:8083/api/comments/`
+   - Get comments for a ticket: `GET http://localhost:8083/api/comments/ticket/{ticketId}`
+
+### Conclusion
+
+This basic implementation can be expanded further with features like:
+
+- Authentication and authorization (e.g., JWT).
+- Integration of a front-end application.
+- Adding a notification service for email/SMS notifications.
+- Implementing an API Gateway for routing and
